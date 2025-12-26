@@ -17,6 +17,19 @@ pub enum PlaneSide {
     OnPlane,
 }
 
+/// Classification of geometry (polygon, triangle, rectangle) relative to a plane.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Classification {
+    /// All vertices are in front of the plane
+    Front,
+    /// All vertices are behind the plane
+    Back,
+    /// All vertices are on the plane (coplanar)
+    Coplanar,
+    /// Vertices are on both sides (spans the plane)
+    Spanning,
+}
+
 /// A plane in 3D space, represented as `normal · point = offset`.
 #[derive(Debug, Clone, PartialEq)]
 pub struct Plane3D {

@@ -2,20 +2,7 @@
 
 use nalgebra::{Point3, Vector3};
 
-use crate::{Plane3D, PlaneSide};
-
-/// Classification of a triangle relative to a plane.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum TriangleClassification {
-    /// All vertices are in front of the plane
-    Front,
-    /// All vertices are behind the plane
-    Back,
-    /// All vertices are on the plane (triangle is coplanar)
-    Coplanar,
-    /// Vertices are on both sides (triangle spans the plane)
-    Spanning,
-}
+use crate::{Classification, Plane3D, PlaneSide};
 
 /// A triangle in 3D space, defined by three vertices.
 #[derive(Debug, Clone, PartialEq)]
@@ -85,7 +72,7 @@ impl Triangle {
     /// - `Back` if all vertices are behind the plane
     /// - `Coplanar` if all vertices lie on the plane
     /// - `Spanning` if vertices are on both sides
-    pub fn classify(&self, plane: &Plane3D) -> TriangleClassification {
+    pub fn classify(&self, plane: &Plane3D) -> Classification {
         let mut front = 0;
         let mut back = 0;
         let mut on_plane = 0;
@@ -99,13 +86,13 @@ impl Triangle {
         }
 
         if on_plane == 3 {
-            TriangleClassification::Coplanar
+            Classification::Coplanar
         } else if back == 0 {
-            TriangleClassification::Front
+            Classification::Front
         } else if front == 0 {
-            TriangleClassification::Back
+            Classification::Back
         } else {
-            TriangleClassification::Spanning
+            Classification::Spanning
         }
     }
 }

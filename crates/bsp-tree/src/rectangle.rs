@@ -2,20 +2,7 @@
 
 use nalgebra::{Point3, Vector3};
 
-use crate::{Plane3D, PlaneSide};
-
-/// Classification of a rectangle relative to a plane.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum RectangleClassification {
-    /// All vertices are in front of the plane
-    Front,
-    /// All vertices are behind the plane
-    Back,
-    /// All vertices are on the plane (rectangle is coplanar)
-    Coplanar,
-    /// Vertices are on both sides (rectangle spans the plane)
-    Spanning,
-}
+use crate::{Classification, Plane3D, PlaneSide};
 
 /// A rectangle (quad) in 3D space, defined by a corner and two edge vectors.
 ///
@@ -41,16 +28,25 @@ impl Rectangle {
 
     /// Creates a rectangle from four corner points.
     ///
-    /// Assumes the points are coplanar and form a valid quad.
     /// The winding order should be: a -> b -> c -> d (counter-clockwise).
     ///
     /// Internally computes u = b - a and v = d - a.
+    ///
+    /// # Panics (debug builds only)
+    /// Panics if the points are not coplanar.
     pub fn from_corners(
         a: Point3<f32>,
         b: Point3<f32>,
-        _c: Point3<f32>,
+        c: Point3<f32>,
         d: Point3<f32>,
     ) -> Self {
+        debug_assert!(
+            {
+                let plane = Plane3D::from_three_points(a, b, d);
+                plane.classify_point(c) == PlaneSide::OnPlane
+            },
+            "Rectangle corners must be coplanar"
+        );
         let u = b - a;
         let v = d - a;
         Self { origin: a, u, v }
@@ -131,7 +127,7 @@ impl Rectangle {
     /// - `Back` if all vertices are behind the plane
     /// - `Coplanar` if all vertices lie on the plane
     /// - `Spanning` if vertices are on both sides
-    pub fn classify(&self, plane: &Plane3D) -> RectangleClassification {
+    pub fn classify(&self, plane: &Plane3D) -> Classification {
         let mut front = 0;
         let mut back = 0;
         let mut on_plane = 0;
@@ -145,13 +141,13 @@ impl Rectangle {
         }
 
         if on_plane == 4 {
-            RectangleClassification::Coplanar
+            Classification::Coplanar
         } else if back == 0 {
-            RectangleClassification::Front
+            Classification::Front
         } else if front == 0 {
-            RectangleClassification::Back
+            Classification::Back
         } else {
-            RectangleClassification::Spanning
+            Classification::Spanning
         }
     }
 }

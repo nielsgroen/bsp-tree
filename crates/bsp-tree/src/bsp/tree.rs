@@ -102,11 +102,12 @@ impl BspTree {
 
     /// Traverses the tree front-to-back relative to the given viewpoint.
     ///
-    /// This ordering is useful for rendering with the painter's algorithm,
-    /// where front polygons should be drawn last (on top).
+    /// Useful for early-Z occlusion culling in modern renderers with depth
+    /// buffers, where drawing front objects first allows the GPU to reject
+    /// occluded fragments.
     ///
     /// The visitor's `visit` method is called for each group of coplanar
-    /// polygons, in front-to-back order.
+    /// polygons, in front-to-back order (nearest first).
     pub fn traverse_front_to_back<V: BspVisitor>(&self, eye: Point3<f32>, visitor: &mut V) {
         if let Some(ref root) = self.root {
             traverse_front_to_back_node(root, eye, visitor);
@@ -115,8 +116,9 @@ impl BspTree {
 
     /// Traverses the tree back-to-front relative to the given viewpoint.
     ///
-    /// This is the reverse of front-to-back traversal, useful when you need
-    /// back polygons first (e.g., for certain transparency effects).
+    /// This is the classic painter's algorithm ordering: far polygons are
+    /// visited first, then closer polygons, so they can be drawn on top.
+    /// Also useful for correct alpha blending of transparent surfaces.
     pub fn traverse_back_to_front<V: BspVisitor>(&self, eye: Point3<f32>, visitor: &mut V) {
         if let Some(ref root) = self.root {
             traverse_back_to_front_node(root, eye, visitor);

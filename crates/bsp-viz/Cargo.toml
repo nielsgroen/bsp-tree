@@ -1,0 +1,9 @@
+[package]
+name = "bsp-viz"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+bsp-tree.workspace = true
+macroquad.workspace = true

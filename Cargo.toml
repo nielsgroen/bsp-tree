@@ -10,3 +10,4 @@ license = "MIT"
 [workspace.dependencies]
 bsp-tree = { path = "crates/bsp-tree" }
 macroquad = "0.4"
+nalgebra = "0.34"

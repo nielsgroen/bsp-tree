@@ -4,7 +4,7 @@ use nalgebra::{Point3, Vector3};
 
 /// Default epsilon for plane classification.
 /// Points within this distance of the plane are considered "on" the plane.
-pub const PLANE_EPSILON: f32 = 1e-5;
+pub const PLANE_EPSILON: f32 = 1e-4;
 
 /// Which side of a plane a point lies on.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

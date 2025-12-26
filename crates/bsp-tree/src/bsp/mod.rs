@@ -19,7 +19,7 @@
 //! let tree = BspTree::from_polygons(polygons);
 //!
 //! // Traverse front-to-back for rendering
-//! let eye = Point3::new(0.0, 0.0, 10.0);
+//! let eye = Point3::new(0.0, 0.0, 10.0);  // The location of the viewer
 //! let mut visitor = CollectingVisitor::new();
 //! tree.traverse_front_to_back(eye, &mut visitor);
 //!

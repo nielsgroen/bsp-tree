@@ -5,7 +5,6 @@
 //!
 //! - Efficient front-to-back and back-to-front traversal for rendering
 //! - Spatial queries based on viewpoint position
-//! - Future: polygon insertion and CSG operations
 //!
 //! # Example
 //!

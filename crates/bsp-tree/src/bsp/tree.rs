@@ -33,13 +33,9 @@ use super::visitor::BspVisitor;
 /// a viewpoint, useful for painter's algorithm rendering:
 ///
 /// ```ignore
+/// tree.traverse_back_to_front(eye_position, &mut visitor);
 /// tree.traverse_front_to_back(eye_position, &mut visitor);
 /// ```
-///
-/// # Future: Insertion
-///
-/// The data structure supports insertion of polygons into an existing tree.
-/// This operation will be implemented in a future version.
 #[derive(Debug, Clone, Default)]
 pub struct BspTree {
     root: Option<BspNode>,

@@ -15,7 +15,7 @@ use crate::{Plane3D, Polygon};
 /// - `coplanar_front`: polygons whose normal points the same direction as the plane normal
 /// - `coplanar_back`: polygons whose normal points opposite to the plane normal
 ///
-/// This distinction is important for future CSG operations where polygon
+/// This distinction is important for CSG operations where polygon
 /// facing determines inside/outside classification.
 #[derive(Debug, Clone)]
 pub struct BspNode {

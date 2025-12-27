@@ -1,85 +1,17 @@
-use std::hash::{Hash, Hasher};
-
-use bsp_tree::{BspTree, BspVisitor, Polygon, Rectangle};
-use macroquad::models::{draw_mesh, Mesh, Vertex};
+use bsp_tree::{BspTree, Polygon};
+use bsp_viz::{generate_cube_polygons, OrbitCamera, TreeNavigator};
 use macroquad::prelude::*;
-use nalgebra::{Point3, Vector3};
+use nalgebra::Point3;
 
 const NUM_CUBES: usize = 100;
 const WORLD_SIZE: f32 = 50.0;
 const MIN_CUBE_SIZE: f32 = 1.0;
 const MAX_CUBE_SIZE: f32 = 5.0;
 
-/// Generates a deterministic color from a polygon's vertices using hashing.
-/// This ensures split polygons get consistent colors across frames.
-fn polygon_color(polygon: &Polygon) -> Color {
-    let mut hasher = std::collections::hash_map::DefaultHasher::new();
-    for v in polygon.vertices() {
-        v.x.to_bits().hash(&mut hasher);
-        v.y.to_bits().hash(&mut hasher);
-        v.z.to_bits().hash(&mut hasher);
-    }
-    let hash = hasher.finish();
-
-    // Extract RGB from hash bytes
-    let r = ((hash >> 16) & 0xFF) as u8;
-    let g = ((hash >> 8) & 0xFF) as u8;
-    let b = (hash & 0xFF) as u8;
-
-    // Ensure colors aren't too dark by adding a minimum brightness
-    let r = r.max(40);
-    let g = g.max(40);
-    let b = b.max(40);
-
-    Color::from_rgba(r, g, b, 255)
-}
-
-/// Generates the 6 face polygons of an axis-aligned cube.
-fn generate_cube_polygons(center: Point3<f32>, size: f32) -> Vec<Polygon> {
-    let half = size / 2.0;
-
-    // 8 corners of the cube
-    let corners = [
-        center + Vector3::new(-half, -half, -half), // 0: left-bottom-back
-        center + Vector3::new(half, -half, -half),  // 1: right-bottom-back
-        center + Vector3::new(half, half, -half),   // 2: right-top-back
-        center + Vector3::new(-half, half, -half),  // 3: left-top-back
-        center + Vector3::new(-half, -half, half),  // 4: left-bottom-front
-        center + Vector3::new(half, -half, half),   // 5: right-bottom-front
-        center + Vector3::new(half, half, half),    // 6: right-top-front
-        center + Vector3::new(-half, half, half),   // 7: left-top-front
-    ];
-
-    // 6 faces with counter-clockwise winding (viewed from outside)
-    let faces: [[usize; 4]; 6] = [
-        [4, 5, 6, 7], // front (+Z)
-        [1, 0, 3, 2], // back (-Z)
-        [0, 4, 7, 3], // left (-X)
-        [5, 1, 2, 6], // right (+X)
-        [7, 6, 2, 3], // top (+Y)
-        [0, 1, 5, 4], // bottom (-Y)
-    ];
-
-    faces
-        .iter()
-        .map(|indices| {
-            Rectangle::from_corners(
-                corners[indices[0]],
-                corners[indices[1]],
-                corners[indices[2]],
-                corners[indices[3]],
-            )
-            .into()
-        })
-        .collect()
-}
-
 /// Generates random cubes in the world space.
 fn generate_random_cubes(seed: u64) -> Vec<Polygon> {
-    // Simple seeded random using the seed
     let mut state = seed;
     let mut next_random = || -> f32 {
-        // Simple LCG random number generator
         state = state.wrapping_mul(6364136223846793005).wrapping_add(1);
         ((state >> 33) as f32) / (u32::MAX as f32 / 2.0)
     };
@@ -99,129 +31,13 @@ fn generate_random_cubes(seed: u64) -> Vec<Polygon> {
     polygons
 }
 
-/// Visitor that renders polygons using macroquad's 3D drawing.
-struct RenderVisitor;
-
-impl BspVisitor for RenderVisitor {
-    fn visit(&mut self, polygons: &[Polygon]) {
-        for polygon in polygons {
-            draw_polygon(polygon);
-        }
-    }
-}
-
-/// Draws a single polygon by triangulating it (fan triangulation) using a Mesh.
-fn draw_polygon(polygon: &Polygon) {
-    let verts = polygon.vertices();
-    if verts.len() < 3 {
-        return;
-    }
-
-    let color = polygon_color(polygon);
-
-    // Convert nalgebra points to macroquad Vertices
-    let mesh_vertices: Vec<Vertex> = verts
-        .iter()
-        .map(|p| Vertex::new2(vec3(p.x, p.y, p.z), vec2(0.0, 0.0), color))
-        .collect();
-
-    // Fan triangulation: vertex 0 connects to all edges
-    let mut indices: Vec<u16> = Vec::with_capacity((verts.len() - 2) * 3);
-    for i in 1..verts.len() - 1 {
-        indices.push(0);
-        indices.push(i as u16);
-        indices.push((i + 1) as u16);
-    }
-
-    let mesh = Mesh {
-        vertices: mesh_vertices,
-        indices,
-        texture: None,
-    };
-
-    draw_mesh(&mesh);
-}
-
-/// Simple orbit camera state.
-struct OrbitCamera {
-    distance: f32,
-    yaw: f32,   // horizontal rotation (radians)
-    pitch: f32, // vertical rotation (radians)
-    target: Vec3,
-}
-
-impl OrbitCamera {
-    fn new() -> Self {
-        Self {
-            distance: 80.0,
-            yaw: 0.0,
-            pitch: 0.3,
-            target: vec3(0.0, 0.0, 0.0),
-        }
-    }
-
-    fn update(&mut self) {
-        // Mouse drag for rotation
-        if is_mouse_button_down(MouseButton::Left) {
-            let delta = mouse_delta_position();
-            self.yaw -= delta.x * 2.0;
-            self.pitch -= delta.y * 2.0;
-        }
-
-        // Clamp pitch to avoid gimbal lock
-        self.pitch = self.pitch.clamp(-1.5, 1.5);
-
-        // Mouse wheel for zoom
-        let scroll = mouse_wheel().1;
-        self.distance -= scroll * 5.0;
-        self.distance = self.distance.clamp(10.0, 200.0);
-
-        // Arrow keys for rotation
-        if is_key_down(KeyCode::Left) {
-            self.yaw += 0.02;
-        }
-        if is_key_down(KeyCode::Right) {
-            self.yaw -= 0.02;
-        }
-        if is_key_down(KeyCode::Up) {
-            self.pitch += 0.02;
-        }
-        if is_key_down(KeyCode::Down) {
-            self.pitch -= 0.02;
-        }
-    }
-
-    fn position(&self) -> Vec3 {
-        let x = self.distance * self.pitch.cos() * self.yaw.sin();
-        let y = self.distance * self.pitch.sin();
-        let z = self.distance * self.pitch.cos() * self.yaw.cos();
-        self.target + vec3(x, y, z)
-    }
-
-    fn to_camera3d(&self) -> Camera3D {
-        Camera3D {
-            position: self.position(),
-            up: vec3(0.0, 1.0, 0.0),
-            target: self.target,
-            ..Default::default()
-        }
-    }
-
-    fn eye_point(&self) -> Point3<f32> {
-        let pos = self.position();
-        Point3::new(pos.x, pos.y, pos.z)
-    }
-}
-
 #[macroquad::main("BSP Visualization")]
 async fn main() {
-    // Generate random cubes with a fixed seed for reproducibility
     println!("Generating {} random cubes...", NUM_CUBES);
     let polygons = generate_random_cubes(42);
     let polygon_count = polygons.len();
     println!("Created {} polygons", polygon_count);
 
-    // Build the BSP tree
     println!("Building BSP tree...");
     let tree = BspTree::from_polygons(polygons);
     println!(
@@ -230,52 +46,47 @@ async fn main() {
         tree.depth()
     );
 
-    let mut camera = OrbitCamera::new();
+    let mut camera = OrbitCamera::new(80.0, 0.0, 0.3);
+    let mut navigator = TreeNavigator::new();
 
     loop {
-        // Update camera from input
         camera.update();
+        navigator.update(&tree);
 
-        // Set up 3D rendering
         clear_background(Color::from_rgba(20, 20, 30, 255));
         set_camera(&camera.to_camera3d());
 
-        // Render polygons in back-to-front order (painter's algorithm)
-        let mut visitor = RenderVisitor;
-        tree.traverse_back_to_front(camera.eye_point(), &mut visitor);
+        // Render current subtree with proper depth ordering
+        navigator.render(&tree, camera.eye_point());
 
-        // Draw coordinate axes for reference
+        // Draw coordinate axes
         draw_line_3d(vec3(0.0, 0.0, 0.0), vec3(10.0, 0.0, 0.0), RED);
         draw_line_3d(vec3(0.0, 0.0, 0.0), vec3(0.0, 10.0, 0.0), GREEN);
         draw_line_3d(vec3(0.0, 0.0, 0.0), vec3(0.0, 0.0, 10.0), BLUE);
 
-        // Return to 2D for UI
         set_default_camera();
 
         // Draw UI
         draw_text(
-            &format!("BSP Tree Visualization - {} polygons", tree.polygon_count()),
+            &format!("BSP Tree Visualization - Total: {} polygons", tree.polygon_count()),
             10.0,
             25.0,
             20.0,
             WHITE,
         );
         draw_text(
-            &format!("Tree depth: {}", tree.depth()),
+            &format!("Tree depth: {} | Original: {}", tree.depth(), polygon_count),
             10.0,
             45.0,
             18.0,
             GRAY,
         );
-        draw_text(
-            &format!("Original polygons: {}", polygon_count),
-            10.0,
-            65.0,
-            18.0,
-            GRAY,
-        );
-        draw_text("Drag mouse to rotate, scroll to zoom", 10.0, 90.0, 16.0, DARKGRAY);
-        draw_text(&format!("FPS: {}", get_fps()), 10.0, 110.0, 16.0, DARKGRAY);
+
+        // Navigator UI
+        navigator.draw_ui(&tree, 70.0);
+
+        draw_text("Drag mouse to rotate, scroll to zoom", 10.0, 155.0, 16.0, DARKGRAY);
+        draw_text(&format!("FPS: {}", get_fps()), 10.0, 175.0, 16.0, DARKGRAY);
 
         next_frame().await
     }

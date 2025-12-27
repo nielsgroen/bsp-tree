@@ -1,24 +1,9 @@
 # bsp-tree
 
 A Binary Space Partitioning (BSP) tree implementation in Rust for 3D polygon management.
+The BSP tree works with flat polygons (triangles, quads, etc.).
 
 BSP trees recursively subdivide space using planes, enabling efficient spatial queries and correct back-to-front rendering of overlapping geometry without a depth buffer.
-
-## Screenshots
-
-### Axis-Aligned Cubes
-100 cubes with 600 polygons → 1481 after BSP splitting
-
-| | | |
-|:---:|:---:|:---:|
-| ![Cubes](images/cubes.png) | ![Cubes 2](images/cubes2.png) | ![Cubes 3](images/cubes3.png) |
-
-### Rotated Cubes
-10 intersecting cubes with 60 polygons → 162 after BSP splitting
-
-| | |
-|:---:|:---:|
-| ![Rotated Cubes](images/rotated_cubes.png) | ![Rotated Cubes 2](images/rotated_cubes2.png) |
 
 ## Features
 
@@ -47,23 +32,31 @@ let tree = BspTree::from_polygons(vec![poly]);
 assert_eq!(tree.polygon_count(), 1);
 ```
 
-## Crates
+## Traversal
 
-| Crate | Description |
-|-------|-------------|
-| `bsp-tree` | Core BSP tree library |
-| `bsp-viz` | Interactive 3D visualization using [macroquad](https://github.com/not-fl3/macroquad) |
+```rust
+use bsp_tree::{BspTree, BspVisitor, Polygon};
+use nalgebra::Point3;
 
-### Running the visualizations
+struct RenderVisitor;
 
-```bash
-# Axis-aligned cubes (100 cubes)
-cargo run -p bsp-viz --bin bsp-viz
+impl BspVisitor for RenderVisitor {
+    fn visit(&mut self, polygon: &Polygon) {
+        // Render the polygon
+    }
+}
 
-# Rotated intersecting cubes (10 cubes)
-cargo run -p bsp-viz --bin rotated
+let tree = BspTree::from_polygons(polygons);
+let eye = Point3::new(0.0, 0.0, 10.0);
+
+// Back-to-front for correct transparency rendering
+tree.traverse_back_to_front(eye, &mut RenderVisitor);
 ```
+
+## Documentation
+
+See the [GitHub repository](https://github.com/nielsgroen/bsp-tree) for full documentation, screenshots, and visualization examples.
 
 ## License
 
-Apache-2.0 - See [LICENSE](LICENSE) and [NOTICE](NOTICE) for details.
+Apache-2.0 - See [LICENSE](https://github.com/nielsgroen/bsp-tree/blob/main/LICENSE) for details.
